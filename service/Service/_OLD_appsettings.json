@@ -36,6 +36,12 @@
       "OpenApiEnabled": true,
       // Whether to run the asynchronous pipeline handlers
       // Use these booleans to deploy the web service and the handlers on same/different VMs
+
+
+
+
+
+
       "RunHandlers": true,
       // Handlers to load for callers (use "steps" to choose which handlers
       // to use to process a document during the ingestion)
