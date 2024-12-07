@@ -12,11 +12,10 @@ steps:
 
   # Step 2: Build the Docker image
   - name: "gcr.io/cloud-builders/docker"
-    secretEnv: ['DOCKER_BUILDKIT']  
+    env:
+      - 'DOCKER_BUILDKIT=1'
     args: [
         "build",
-        "--secret", # ensure the id of the secret matches what is defined in Secret Manager
-        "id=buildkit,env=DOCKER_BUILDKIT", # Reference the secret. Ensure we use BuildKit (a more modern and efficient way to build Docker images)
         # Cloud Build's Build ID environment variable
         "--build-arg",
         "BUILD_ID=$BUILD_ID",
