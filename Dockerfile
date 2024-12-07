@@ -50,10 +50,10 @@ USER $USER
 
 # Used by .NET and KM to load appsettings.Production.json
 ENV ASPNETCORE_ENVIRONMENT=Production
-ENV ASPNETCORE_URLS=http://+:9001
-ENV ASPNETCORE_HTTP_PORTS=9001
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_HTTP_PORTS=8080
 
-EXPOSE 9001
+EXPOSE 8080
 
 # Define executable
 ENTRYPOINT ["dotnet", "Microsoft.KernelMemory.ServiceAssembly.dll"]
