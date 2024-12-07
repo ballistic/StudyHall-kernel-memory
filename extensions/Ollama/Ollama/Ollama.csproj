@@ -5,8 +5,17 @@
         <RollForward>LatestMajor</RollForward>
         <AssemblyName>Microsoft.KernelMemory.AI.Ollama</AssemblyName>
         <RootNamespace>Microsoft.KernelMemory.AI.Ollama</RootNamespace>
-        <NoWarn>$(NoWarn);KMEXP00;KMEXP01;CA1724;CS8002;</NoWarn>
+        <NoWarn>$(NoWarn);KMEXP00;KMEXP01;CA1724;</NoWarn>
     </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\service\Abstractions\Abstractions.csproj" />
+        <ProjectReference Include="..\..\Tiktoken\Tiktoken\Tiktoken.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="OllamaSharp" />
+    </ItemGroup>
 
     <PropertyGroup>
         <IsPackable>true</IsPackable>
@@ -19,15 +28,6 @@
 
     <ItemGroup>
         <None Include="..\README.md" Link="README.md" Pack="true" PackagePath="." Visible="false" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <PackageReference Include="OllamaSharp" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <ProjectReference Include="..\..\..\service\Abstractions\Abstractions.csproj" />
-        <ProjectReference Include="..\..\OpenAI\OpenAI\OpenAI.csproj" />
     </ItemGroup>
 
 </Project>

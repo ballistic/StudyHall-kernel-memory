@@ -5,8 +5,9 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Microsoft.KernelMemory.AI.OpenAI;
+using Microsoft.KernelMemory.Context;
 using Microsoft.KernelMemory.Diagnostics;
 using OllamaSharp;
 using OllamaSharp.Models;
@@ -19,8 +20,9 @@ public class OllamaTextGenerator : ITextGenerator
 
     private readonly IOllamaApiClient _client;
     private readonly OllamaModelConfig _modelConfig;
-    private readonly ILogger<OllamaTextGenerator> _log;
     private readonly ITextTokenizer _textTokenizer;
+    private readonly IContextProvider _contextProvider;
+    private readonly ILogger<OllamaTextGenerator> _log;
 
     public int MaxTokenTotal { get; }
 
@@ -28,21 +30,24 @@ public class OllamaTextGenerator : ITextGenerator
         IOllamaApiClient ollamaClient,
         OllamaModelConfig modelConfig,
         ITextTokenizer? textTokenizer = null,
+        IContextProvider? contextProvider = null,
         ILoggerFactory? loggerFactory = null)
     {
         this._client = ollamaClient;
         this._modelConfig = modelConfig;
         this._log = (loggerFactory ?? DefaultLogger.Factory).CreateLogger<OllamaTextGenerator>();
 
+        textTokenizer ??= TokenizerFactory.GetTokenizerForEncoding(modelConfig.Tokenizer);
         if (textTokenizer == null)
         {
+            textTokenizer = new O200KTokenizer();
             this._log.LogWarning(
                 "Tokenizer not specified, will use {0}. The token count might be incorrect, causing unexpected errors",
-                nameof(GPT4oTokenizer));
-            textTokenizer = new GPT4oTokenizer();
+                textTokenizer.GetType().FullName);
         }
 
         this._textTokenizer = textTokenizer;
+        this._contextProvider = contextProvider ?? new RequestContextProvider();
 
         this.MaxTokenTotal = modelConfig.MaxTokenTotal ?? MaxTokensIfUndefined;
     }
@@ -50,11 +55,13 @@ public class OllamaTextGenerator : ITextGenerator
     public OllamaTextGenerator(
         OllamaConfig config,
         ITextTokenizer? textTokenizer = null,
+        IContextProvider? contextProvider = null,
         ILoggerFactory? loggerFactory = null)
         : this(
             new OllamaApiClient(new Uri(config.Endpoint), config.TextModel.ModelName),
             config.TextModel,
             textTokenizer,
+            contextProvider,
             loggerFactory)
     {
     }
@@ -63,11 +70,13 @@ public class OllamaTextGenerator : ITextGenerator
         HttpClient httpClient,
         OllamaConfig config,
         ITextTokenizer? textTokenizer = null,
+        IContextProvider? contextProvider = null,
         ILoggerFactory? loggerFactory = null)
         : this(
             new OllamaApiClient(httpClient, config.TextModel.ModelName),
             config.TextModel,
             textTokenizer,
+            contextProvider,
             loggerFactory)
     {
     }
@@ -87,9 +96,12 @@ public class OllamaTextGenerator : ITextGenerator
         TextGenerationOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        string modelName = this._contextProvider.GetContext().GetCustomTextGenerationModelNameOrDefault(this._client.SelectedModel);
+        this._log.LogTrace("Generating text with model {0}", modelName);
+
         var request = new GenerateRequest
         {
-            Model = this._client.SelectedModel,
+            Model = modelName,
             Prompt = prompt,
             Stream = true,
             Options = new RequestOptions
@@ -131,8 +143,8 @@ public class OllamaTextGenerator : ITextGenerator
         // }
 
         var chat = new Chat(this._client);
-        IAsyncEnumerable<string?> stream = chat.Send(prompt, cancellationToken);
-        await foreach (string? token in stream)
+        IAsyncEnumerable<string?> stream = chat.SendAsync(prompt, cancellationToken);
+        await foreach (string? token in stream.ConfigureAwait(false))
         {
             if (token != null) { yield return token; }
         }

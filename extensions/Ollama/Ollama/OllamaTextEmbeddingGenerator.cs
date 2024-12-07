@@ -7,7 +7,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Microsoft.KernelMemory.AI.OpenAI;
+using Microsoft.KernelMemory.Context;
 using Microsoft.KernelMemory.Diagnostics;
 using OllamaSharp;
 using OllamaSharp.Models;
@@ -20,8 +20,9 @@ public class OllamaTextEmbeddingGenerator : ITextEmbeddingGenerator, ITextEmbedd
 
     private readonly IOllamaApiClient _client;
     private readonly OllamaModelConfig _modelConfig;
-    private readonly ILogger<OllamaTextEmbeddingGenerator> _log;
     private readonly ITextTokenizer _textTokenizer;
+    private readonly IContextProvider _contextProvider;
+    private readonly ILogger<OllamaTextEmbeddingGenerator> _log;
 
     public int MaxTokens { get; }
 
@@ -31,6 +32,7 @@ public class OllamaTextEmbeddingGenerator : ITextEmbeddingGenerator, ITextEmbedd
         IOllamaApiClient ollamaClient,
         OllamaModelConfig modelConfig,
         ITextTokenizer? textTokenizer = null,
+        IContextProvider? contextProvider = null,
         ILoggerFactory? loggerFactory = null)
     {
         this._client = ollamaClient;
@@ -38,15 +40,17 @@ public class OllamaTextEmbeddingGenerator : ITextEmbeddingGenerator, ITextEmbedd
         this.MaxBatchSize = modelConfig.MaxBatchSize;
         this._log = (loggerFactory ?? DefaultLogger.Factory).CreateLogger<OllamaTextEmbeddingGenerator>();
 
+        textTokenizer ??= TokenizerFactory.GetTokenizerForEncoding(modelConfig.Tokenizer);
         if (textTokenizer == null)
         {
+            textTokenizer = new CL100KTokenizer();
             this._log.LogWarning(
                 "Tokenizer not specified, will use {0}. The token count might be incorrect, causing unexpected errors",
-                nameof(GPT4oTokenizer));
-            textTokenizer = new GPT4oTokenizer();
+                textTokenizer.GetType().FullName);
         }
 
         this._textTokenizer = textTokenizer;
+        this._contextProvider = contextProvider ?? new RequestContextProvider();
 
         this.MaxTokens = modelConfig.MaxTokenTotal ?? MaxTokensIfUndefined;
     }
@@ -54,11 +58,13 @@ public class OllamaTextEmbeddingGenerator : ITextEmbeddingGenerator, ITextEmbedd
     public OllamaTextEmbeddingGenerator(
         OllamaConfig config,
         ITextTokenizer? textTokenizer = null,
+        IContextProvider? contextProvider = null,
         ILoggerFactory? loggerFactory = null)
         : this(
             new OllamaApiClient(new Uri(config.Endpoint), config.EmbeddingModel.ModelName),
             config.EmbeddingModel,
             textTokenizer,
+            contextProvider,
             loggerFactory)
     {
     }
@@ -67,11 +73,13 @@ public class OllamaTextEmbeddingGenerator : ITextEmbeddingGenerator, ITextEmbedd
         HttpClient httpClient,
         OllamaConfig config,
         ITextTokenizer? textTokenizer = null,
+        IContextProvider? contextProvider = null,
         ILoggerFactory? loggerFactory = null)
         : this(
             new OllamaApiClient(httpClient, config.EmbeddingModel.ModelName),
             config.EmbeddingModel,
             textTokenizer,
+            contextProvider,
             loggerFactory)
     {
     }
@@ -104,11 +112,13 @@ public class OllamaTextEmbeddingGenerator : ITextEmbeddingGenerator, ITextEmbedd
         CancellationToken cancellationToken = default)
     {
         var list = textList.ToList();
-        this._log.LogTrace("Generating embeddings batch, size {0} texts", list.Count);
+
+        string modelName = this._contextProvider.GetContext().GetCustomEmbeddingGenerationModelNameOrDefault(this._client.SelectedModel);
+        this._log.LogTrace("Generating embeddings batch, size {0} texts, with model {1}", list.Count, modelName);
 
         var request = new EmbedRequest
         {
-            Model = this._client.SelectedModel,
+            Model = modelName,
             Input = list,
             Options = new RequestOptions
             {
@@ -129,8 +139,8 @@ public class OllamaTextEmbeddingGenerator : ITextEmbeddingGenerator, ITextEmbedd
             }
         };
 
-        EmbedResponse response = await this._client.Embed(request, cancellationToken).ConfigureAwait(false);
-        Embedding[] result = response.Embeddings.Select(Embedding.FromDoubles).ToArray();
+        EmbedResponse response = await this._client.EmbedAsync(request, cancellationToken).ConfigureAwait(false);
+        Embedding[] result = response.Embeddings.Select(x => new Embedding(x)).ToArray();
 
         this._log.LogTrace("Embeddings batch ready, size {0} texts", result.Length);
 

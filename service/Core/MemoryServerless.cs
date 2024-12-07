@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,6 +27,7 @@ public sealed class MemoryServerless : IKernelMemory
 {
     private readonly InProcessPipelineOrchestrator _orchestrator;
     private readonly ISearchClient _searchClient;
+    private readonly IContextProvider _contextProvider;
     private readonly string? _defaultIndexName;
 
     /// <summary>
@@ -41,10 +43,12 @@ public sealed class MemoryServerless : IKernelMemory
     public MemoryServerless(
         InProcessPipelineOrchestrator orchestrator,
         ISearchClient searchClient,
+        IContextProvider? contextProvider = null,
         KernelMemoryConfig? config = null)
     {
         this._orchestrator = orchestrator ?? throw new ConfigurationException("The orchestrator is NULL");
         this._searchClient = searchClient ?? throw new ConfigurationException("The search client is NULL");
+        this._contextProvider = contextProvider ?? new RequestContextProvider();
 
         // A non-null config object is required in order to get a non-empty default index name
         config ??= new KernelMemoryConfig();
@@ -59,6 +63,7 @@ public sealed class MemoryServerless : IKernelMemory
         IContext? context = null,
         CancellationToken cancellationToken = default)
     {
+        this._contextProvider.InitContext(context);
         DocumentUploadRequest uploadRequest = new(document, index, steps);
         return this.ImportDocumentAsync(uploadRequest, context, cancellationToken);
     }
@@ -73,6 +78,7 @@ public sealed class MemoryServerless : IKernelMemory
         IContext? context = null,
         CancellationToken cancellationToken = default)
     {
+        this._contextProvider.InitContext(context);
         var document = new Document(documentId, tags: tags).AddFile(filePath);
         DocumentUploadRequest uploadRequest = new(document, index, steps);
         return this.ImportDocumentAsync(uploadRequest, context, cancellationToken);
@@ -84,6 +90,7 @@ public sealed class MemoryServerless : IKernelMemory
         IContext? context = null,
         CancellationToken cancellationToken = default)
     {
+        this._contextProvider.InitContext(context);
         var index = IndexName.CleanName(uploadRequest.Index, this._defaultIndexName);
         return this._orchestrator.ImportDocumentAsync(index, uploadRequest, context, cancellationToken);
     }
@@ -99,6 +106,7 @@ public sealed class MemoryServerless : IKernelMemory
         IContext? context = null,
         CancellationToken cancellationToken = default)
     {
+        this._contextProvider.InitContext(context);
         var document = new Document(documentId, tags: tags).AddStream(fileName, content);
         DocumentUploadRequest uploadRequest = new(document, index, steps);
         return this.ImportDocumentAsync(uploadRequest, context, cancellationToken);
@@ -114,6 +122,7 @@ public sealed class MemoryServerless : IKernelMemory
         IContext? context = null,
         CancellationToken cancellationToken = default)
     {
+        this._contextProvider.InitContext(context);
         var content = new MemoryStream(Encoding.UTF8.GetBytes(text));
         await using (content.ConfigureAwait(false))
         {
@@ -139,6 +148,7 @@ public sealed class MemoryServerless : IKernelMemory
         IContext? context = null,
         CancellationToken cancellationToken = default)
     {
+        this._contextProvider.InitContext(context);
         var uri = new Uri(url);
         Verify.ValidateUrl(uri.AbsoluteUri, requireHttps: false, allowReservedIp: false, allowQuery: true);
 
@@ -233,9 +243,10 @@ public sealed class MemoryServerless : IKernelMemory
         IContext? context = null,
         CancellationToken cancellationToken = default)
     {
+        this._contextProvider.InitContext(context);
         if (filter != null)
         {
-            if (filters == null) { filters = new List<MemoryFilter>(); }
+            if (filters == null) { filters = []; }
 
             filters.Add(filter);
         }
@@ -252,29 +263,47 @@ public sealed class MemoryServerless : IKernelMemory
     }
 
     /// <inheritdoc />
-    public Task<MemoryAnswer> AskAsync(
+    public async IAsyncEnumerable<MemoryAnswer> AskStreamingAsync(
         string question,
         string? index = null,
         MemoryFilter? filter = null,
         ICollection<MemoryFilter>? filters = null,
         double minRelevance = 0,
+        SearchOptions? options = null,
         IContext? context = null,
-        CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        this._contextProvider.InitContext(context);
         if (filter != null)
         {
-            if (filters == null) { filters = new List<MemoryFilter>(); }
-
+            filters ??= [];
             filters.Add(filter);
         }
 
         index = IndexName.CleanName(index, this._defaultIndexName);
-        return this._searchClient.AskAsync(
+
+        if (options is { Stream: true })
+        {
+            await foreach (var answer in this._searchClient.AskStreamingAsync(
+                               index: index,
+                               question: question,
+                               filters: filters,
+                               minRelevance: minRelevance,
+                               context: context,
+                               cancellationToken).ConfigureAwait(false))
+            {
+                yield return answer;
+            }
+
+            yield break;
+        }
+
+        yield return await this._searchClient.AskAsync(
             index: index,
             question: question,
             filters: filters,
             minRelevance: minRelevance,
             context: context,
-            cancellationToken: cancellationToken);
+            cancellationToken).ConfigureAwait(false);
     }
 }

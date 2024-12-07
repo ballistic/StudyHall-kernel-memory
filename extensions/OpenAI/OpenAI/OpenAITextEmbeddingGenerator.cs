@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory.AI.OpenAI.Internals;
 using Microsoft.KernelMemory.Diagnostics;
+using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.AI.Embeddings;
 using Microsoft.SemanticKernel.Embeddings;
 using OpenAI;
@@ -18,6 +19,9 @@ namespace Microsoft.KernelMemory.AI.OpenAI;
 /// <summary>
 /// Text embedding generator. The class can be used with any service
 /// supporting OpenAI HTTP schema.
+///
+/// Note: does not support model name override via request context
+///       see https://github.com/microsoft/semantic-kernel/issues/9337
 /// </summary>
 [Experimental("KMEXP01")]
 public sealed class OpenAITextEmbeddingGenerator : ITextEmbeddingGenerator, ITextEmbeddingBatchGenerator
@@ -92,12 +96,18 @@ public sealed class OpenAITextEmbeddingGenerator : ITextEmbeddingGenerator, ITex
         this.MaxTokens = config.EmbeddingModelMaxTokenTotal;
         this.MaxBatchSize = config.MaxEmbeddingBatchSize;
 
+        if (textTokenizer == null && !string.IsNullOrEmpty(config.EmbeddingModelTokenizer))
+        {
+            textTokenizer = TokenizerFactory.GetTokenizerForEncoding(config.EmbeddingModelTokenizer);
+        }
+
+        textTokenizer ??= TokenizerFactory.GetTokenizerForModel(config.EmbeddingModel);
         if (textTokenizer == null)
         {
+            textTokenizer = new CL100KTokenizer();
             this._log.LogWarning(
                 "Tokenizer not specified, will use {0}. The token count might be incorrect, causing unexpected errors",
-                nameof(GPT4oTokenizer));
-            textTokenizer = new GPT4oTokenizer();
+                textTokenizer.GetType().FullName);
         }
 
         this._textTokenizer = textTokenizer;
@@ -119,7 +129,14 @@ public sealed class OpenAITextEmbeddingGenerator : ITextEmbeddingGenerator, ITex
     public Task<Embedding> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
     {
         this._log.LogTrace("Generating embedding");
-        return this._client.GenerateEmbeddingAsync(text, cancellationToken);
+        try
+        {
+            return this._client.GenerateEmbeddingAsync(text, cancellationToken);
+        }
+        catch (HttpOperationException e)
+        {
+            throw new OpenAIException(e.Message, e, isTransient: e.StatusCode.IsTransientError());
+        }
     }
 
     /// <inheritdoc/>
@@ -127,7 +144,14 @@ public sealed class OpenAITextEmbeddingGenerator : ITextEmbeddingGenerator, ITex
     {
         var list = textList.ToList();
         this._log.LogTrace("Generating embeddings, batch size '{0}'", list.Count);
-        var embeddings = await this._client.GenerateEmbeddingsAsync(list, cancellationToken: cancellationToken).ConfigureAwait(false);
-        return embeddings.Select(e => new Embedding(e)).ToArray();
+        try
+        {
+            var embeddings = await this._client.GenerateEmbeddingsAsync(list, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return embeddings.Select(e => new Embedding(e)).ToArray();
+        }
+        catch (HttpOperationException e)
+        {
+            throw new OpenAIException(e.Message, e, isTransient: e.StatusCode.IsTransientError());
+        }
     }
 }
