@@ -42,19 +42,19 @@ steps:
         "${_REGION}-docker.pkg.dev/$PROJECT_ID/study-apps-artifact-registry/kernelmemory-api:${SHORT_SHA}",
       ]
 
- # Step 4: Deploy the Docker image to Cloud Run
- - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-   entrypoint: "gcloud"
-   args:
-     - "deploy"
-     - "releases"
-     - "create"
-     - "release-${SHORT_SHA}"
-     - "--delivery-pipeline=kernelmemory-cicd-clouddeploy-pipeline"
-     - "--region=us-east4"
-     - "--images=kernelmemory-api=${_REGION}-docker.pkg.dev/$PROJECT_ID/study-apps-artifact-registry/kernelmemory-api:${SHORT_SHA}"
-     - "--source=." # The source directory containing skaffold.yaml
-     - "--annotations=gcb-build-id=$BUILD_ID,commit-sha=${SHORT_SHA}"
+  # Step 4: Deploy the Docker image to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: "gcloud"
+    args:
+      - "deploy"
+      - "releases"
+      - "create"
+      - "release-${SHORT_SHA}"
+      - "--delivery-pipeline=kernelmemory-cicd-clouddeploy-pipeline"
+      - "--region=us-east4"
+      - "--images=kernelmemory-api=${_REGION}-docker.pkg.dev/$PROJECT_ID/study-apps-artifact-registry/kernelmemory-api:${SHORT_SHA}"
+      - "--source=." # The source directory containing skaffold.yaml
+      - "--annotations=gcb-build-id=$BUILD_ID,commit-sha=${SHORT_SHA}"
 
 images:
   - "${_REGION}-docker.pkg.dev/$PROJECT_ID/study-apps-artifact-registry/kernelmemory-api"
