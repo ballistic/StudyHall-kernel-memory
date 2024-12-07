@@ -1,7 +1,7 @@
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: study-cloudrun-api
+  name: kernelmemory-cloudrun-api
   annotations:
     run.googleapis.com/launch-stage: BETA
     run.googleapis.com/ingress: all
@@ -87,4 +87,4 @@ spec:
     # - percent: 80
     #   latestRevision: true
     # - percent: 20
-    #   revisionName: study-cloudrun-api-v1  # Points to a specific revision
+    #   revisionName: kernelmemory-cloudrun-api-v1  # Points to a specific revision
