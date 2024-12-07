@@ -13,28 +13,34 @@ steps:
   # Step 2: Build the Docker image
   - name: "gcr.io/cloud-builders/docker"
     args: [
-      "build",
-      # Cloud Build's Build ID environment variable
-      "--build-arg",
-      "BUILD_ID=$BUILD_ID",
-      # Cloud Build's Git Commit SHA environment variable
-      "--build-arg",
-      "COMMIT_SHA=$COMMIT_SHA",
-      # The tags for the Docker image
-      "-t",
-      "${_REGION}-docker.pkg.dev/$PROJECT_ID/study-apps-artifact-registry/kernelmemory-api:${SHORT_SHA}",
-      "-t",
-      "${_REGION}-docker.pkg.dev/$PROJECT_ID/study-apps-artifact-registry/kernelmemory-api:latest",
-      # The Dockerfile to use
-      "-f",
-      "Dockerfile",
-      # The directory containing the Dockerfile
-      ".",
-    ]
+        "build",
+        "--secret", # ensure the id of the secret matches what is defined in Secret Manager
+        "id=buildkit,env=DOCKER_BUILDKIT", # Reference the secret. Ensure we use BuildKit (a more modern and efficient way to build Docker images)
+        # Cloud Build's Build ID environment variable
+        "--build-arg",
+        "BUILD_ID=$BUILD_ID",
+        # Cloud Build's Git Commit SHA environment variable
+        "--build-arg",
+        "COMMIT_SHA=$COMMIT_SHA",
+        # The tags for the Docker image
+        "-t",
+        "${_REGION}-docker.pkg.dev/$PROJECT_ID/study-apps-artifact-registry/kernelmemory-api:${SHORT_SHA}",
+        "-t",
+        "${_REGION}-docker.pkg.dev/$PROJECT_ID/study-apps-artifact-registry/kernelmemory-api:latest",
+        # The Dockerfile to use
+        "-f",
+        "Dockerfile",
+        # The directory containing the Dockerfile
+        ".",
+      ]
 
   # Step 3: Push the Docker image to Google Artifact Registry
   - name: "gcr.io/cloud-builders/docker"
-    args: [ "push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/study-apps-artifact-registry/kernelmemory-api:${SHORT_SHA}" ]
+    args:
+      [
+        "push",
+        "${_REGION}-docker.pkg.dev/$PROJECT_ID/study-apps-artifact-registry/kernelmemory-api:${SHORT_SHA}",
+      ]
 
 #  # Step 4: Deploy the Docker image to Cloud Run
 #  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
@@ -58,3 +64,6 @@ options:
 
 substitutions:
   _REGION: "us-east4"
+
+secrets: # lists the secrets that the build step requires
+  - name: "projects/$PROJECT_ID/secrets/buildkit/versions/latest"
