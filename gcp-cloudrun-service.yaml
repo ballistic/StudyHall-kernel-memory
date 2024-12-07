@@ -1,0 +1,90 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: study-cloudrun-api
+  annotations:
+    run.googleapis.com/launch-stage: BETA
+    run.googleapis.com/ingress: all
+    run.googleapis.com/client-name: terraform
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/cloudsql-instances: study-prod-1338:us-east4:kernelmemory-db
+        autoscaling.knative.dev/maxScale: "2"
+        autoscaling.knative.dev/minScale: "0"
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/startup-cpu-boost: "true"
+    spec:
+      # TODO(datatez): Create a custom service account for KernelMemory Cloud Run
+      serviceAccountName: study-prod-sa-cloudrun-api # Varies by environment
+      containers:
+        - image: kernelmemory-api # This will be replaced by Cloud Deploy with the actual image
+          name: api
+          resources:
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+          startupProbe:
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+            periodSeconds: 3
+            failureThreshold: 1
+            tcpSocket:
+              port: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production # Varies by environment
+            # - name: ConnectionStrings__StudyHallConnectionString
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: study-api-studyhalldb-postgres-connectionstring
+            #       key: latest
+            # - name: ApiSettings__ServiceBus__SenderConnectionString
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: study-api-servicebus-sender-connectionstring
+            #       key: latest
+            # - name: ApiSettings__FirebaseAuth__AccountKeyJson
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: study-api-firebaseauth-accountkeyjson
+            #       key: latest
+            # - name: ApiSettings__SendGrid__ApiKey
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: study-api-sendgrid-apikey
+            #       key: latest
+            # - name: Stripe__PublishableKey
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: study-api-stripe-publishablekey
+            #       key: latest
+            # - name: Stripe__SecretKey
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: study-api-stripe-secretkey
+            #       key: latest
+            # - name: Stripe__WebhookSecret
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: study-api-stripe-webhooksecret
+            #       key: latest
+            # - name: AzureOpenAiSettings__Key
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: study-api-azureopenai-key
+            #       key: latest
+            # - name: GoogleGemini__ApiKey
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: study-api-googlegemini-key
+            #       key: latest
+  traffic:
+    - percent: 100
+      latestRevision: true # This directs traffic to the latest revision
+    # Optionally, can split traffic between revisions like this:
+    # - percent: 80
+    #   latestRevision: true
+    # - percent: 20
+    #   revisionName: study-cloudrun-api-v1  # Points to a specific revision
