@@ -13,7 +13,7 @@ steps:
   # Step 2: Build the Docker image
   - name: "gcr.io/cloud-builders/docker"
     env:
-      - 'DOCKER_BUILDKIT=1'
+      - "DOCKER_BUILDKIT=1"
     args: [
         "build",
         # Cloud Build's Build ID environment variable
@@ -64,7 +64,3 @@ options:
 
 substitutions:
   _REGION: "us-east4"
-
-secrets: # lists the secrets that the build step requires
-  - secretEnv:
-      DOCKER_BUILDKIT: projects/$PROJECT_ID/secrets/buildkit/versions/latest
