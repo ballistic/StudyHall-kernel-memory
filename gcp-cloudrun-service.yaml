@@ -16,8 +16,7 @@ spec:
         run.googleapis.com/execution-environment: gen2
         run.googleapis.com/startup-cpu-boost: "true"
     spec:
-      # TODO(datatez): Create a custom service account for KernelMemory Cloud Run
-      serviceAccountName: study-prod-sa-cloudrun-api # Varies by environment
+      serviceAccountName: km-prod-sa-cloudrun-api
       containers:
         - image: kernelmemory-api # This will be replaced by Cloud Deploy with the actual image
           name: api
