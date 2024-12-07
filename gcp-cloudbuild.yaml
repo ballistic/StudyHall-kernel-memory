@@ -12,10 +12,10 @@ steps:
 
   # Step 2: Build the Docker image
   - name: "gcr.io/cloud-builders/docker"
-    env:
-      - "DOCKER_BUILDKIT=1"
     args: [
         "build",
+        "--build-arg",
+        "BUILDKIT_INLINE_CACHE=1",  # Enable BuildKit inline caching
         # Cloud Build's Build ID environment variable
         "--build-arg",
         "BUILD_ID=$BUILD_ID",
