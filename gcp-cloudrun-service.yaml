@@ -34,51 +34,51 @@ spec:
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: Production # Varies by environment
-            # - name: ConnectionStrings__StudyHallConnectionString
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: study-api-studyhalldb-postgres-connectionstring
-            #       key: latest
-            # - name: ApiSettings__ServiceBus__SenderConnectionString
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: study-api-servicebus-sender-connectionstring
-            #       key: latest
-            # - name: ApiSettings__FirebaseAuth__AccountKeyJson
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: study-api-firebaseauth-accountkeyjson
-            #       key: latest
-            # - name: ApiSettings__SendGrid__ApiKey
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: study-api-sendgrid-apikey
-            #       key: latest
-            # - name: Stripe__PublishableKey
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: study-api-stripe-publishablekey
-            #       key: latest
-            # - name: Stripe__SecretKey
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: study-api-stripe-secretkey
-            #       key: latest
-            # - name: Stripe__WebhookSecret
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: study-api-stripe-webhooksecret
-            #       key: latest
-            # - name: AzureOpenAiSettings__Key
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: study-api-azureopenai-key
-            #       key: latest
-            # - name: GoogleGemini__ApiKey
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: study-api-googlegemini-key
-            #       key: latest
+            - name: KernelMemory__Services__AzureBlobs__ConnectionString
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-azureblobs-connectionstring
+                  key: latest
+            - name: KernelMemory__Services__AzureOpenAIEmbedding__Endpoint
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-azureopenai-embedding-endpoint
+                  key: latest
+            - name: KernelMemory__Services__AzureOpenAIEmbedding__APIKey
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-azureopenai-embedding-apikey
+                  key: latest
+            - name: KernelMemory__Services__AzureOpenAIEmbedding__Deployment
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-azureopenai-embedding-deployment
+                  key: latest
+            - name: KernelMemory__Services__AzureOpenAIText__Endpoint
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-azureopenai-text-endpoint
+                  key: latest
+            - name: KernelMemory__Services__AzureOpenAIText__APIKey
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-azureopenai-text-apikey
+                  key: latest
+            - name: KernelMemory__Services__AzureOpenAIText__Deployment
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-azureopenai-text-deployment
+                  key: latest
+            - name: KernelMemory__Services__AzureQueues__ConnectionString
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-azurequeues-connectionstring
+                  key: latest
+            - name: KernelMemory__Services__Postgres__ConnectionString
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-kernelmemorydb-postgres-connectionstring
+                  key: latest
   traffic:
     - percent: 100
       latestRevision: true # This directs traffic to the latest revision
