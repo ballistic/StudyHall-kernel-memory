@@ -12,6 +12,7 @@ steps:
 
   # Step 2: Build the Docker image
   - name: "gcr.io/cloud-builders/docker"
+    secretEnv: ['DOCKER_BUILDKIT']  
     args: [
         "build",
         "--secret", # ensure the id of the secret matches what is defined in Secret Manager
@@ -66,4 +67,5 @@ substitutions:
   _REGION: "us-east4"
 
 secrets: # lists the secrets that the build step requires
-  - name: "projects/$PROJECT_ID/secrets/buildkit/versions/latest"
+  - secretEnv:
+      DOCKER_BUILDKIT: projects/$PROJECT_ID/secrets/buildkit/versions/latest
