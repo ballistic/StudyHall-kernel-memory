@@ -10,13 +10,13 @@ spec:
   template:
     metadata:
       annotations:
-        run.googleapis.com/cloudsql-instances: study-stg-1338:us-east4:kernelmemory-db
+        run.googleapis.com/cloudsql-instances: study-stg-1338:us-east4:kernelmemory-study-stg-db
         autoscaling.knative.dev/maxScale: "2"
         autoscaling.knative.dev/minScale: "0"
         run.googleapis.com/execution-environment: gen2
         run.googleapis.com/startup-cpu-boost: "true"
     spec:
-      serviceAccountName: km-stg-sa-cloudrun-api
+      serviceAccountName: km-study-stg-sa-cloudrun-api
       containers:
         - image: kernelmemory-api # This will be replaced by Cloud Deploy with the actual image
           name: api
