@@ -14,7 +14,7 @@ profiles:
         region: us-east4
     manifests:
       rawYaml:
-        - ./gcp-cloudrun-service.yaml
+        - ./gcp-cloudrun-service-stg.yaml
   - name: prod
     deploy:
       cloudrun:
@@ -22,4 +22,4 @@ profiles:
         region: us-east4
     manifests:
       rawYaml:
-        - ./gcp-cloudrun-service.yaml
+        - ./gcp-cloudrun-service-prod.yaml
