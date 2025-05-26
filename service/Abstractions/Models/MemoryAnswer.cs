@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.KernelMemory.Text;
 
 namespace Microsoft.KernelMemory;
 
@@ -47,6 +48,15 @@ public class MemoryAnswer
     public string Result { get; set; } = string.Empty;
 
     /// <summary>
+    /// The token used by the model to generate the answer.
+    /// </summary>
+    /// <remarks>Not all the models and text generators return token usage information.</remarks>
+    [JsonPropertyName("tokenUsage")]
+    [JsonPropertyOrder(11)]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<TokenUsage>? TokenUsage { get; set; }
+
+    /// <summary>
     /// List of the relevant sources used to produce the answer.
     /// Key = Document ID
     /// Value = List of partitions used from the document.
@@ -83,7 +93,7 @@ public class MemoryAnswer
     public override string ToString()
     {
         var result = new StringBuilder();
-        result.AppendLine(this.Result);
+        result.AppendLineNix(this.Result);
 
         if (!this.NoResult && this.RelevantSources is { Count: > 0 })
         {
@@ -94,8 +104,8 @@ public class MemoryAnswer
                 sources[x.Index + x.Link] = $"  - {x.SourceName} [{date}]";
             }
 
-            result.AppendLine("- Sources:");
-            result.AppendLine(string.Join("\n", sources.Values));
+            result.AppendLineNix("- Sources:");
+            result.AppendLineNix(string.Join("\n", sources.Values));
         }
 
         return result.ToString();

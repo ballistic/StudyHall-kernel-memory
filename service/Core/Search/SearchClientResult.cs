@@ -1,5 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace Microsoft.KernelMemory.Search;
@@ -31,14 +33,14 @@ internal class SearchClientResult
     public MemoryAnswer NoQuestionResult { get; private init; } = new();
     public MemoryAnswer UnsafeAnswerResult { get; private init; } = new();
     public MemoryAnswer InsufficientTokensResult { get; private init; } = new();
-    public MemoryAnswer ErrorResult { get; private init; } = new();
 
     // Use by Ask mode
     public SearchResult SearchResult { get; private init; } = new();
     public StringBuilder Facts { get; } = new();
     public int FactsAvailableCount { get; set; }
-    public int FactsUsedCount { get; set; }
+    public int FactsUsedCount { get; set; } // Note: the number includes also duplicate chunks not used in the prompt
     public int TokensAvailable { get; set; }
+    public HashSet<string> FactsUniqueness { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Create new instance in Ask mode
@@ -89,13 +91,6 @@ internal class SearchClientResult
                 NoResult = true,
                 NoResultReason = "Content moderation",
                 Result = moderatedAnswer
-            },
-            ErrorResult = new MemoryAnswer
-            {
-                StreamState = StreamStates.Error,
-                Question = question,
-                NoResult = true,
-                NoResultReason = "An error occurred"
             }
         };
     }
@@ -109,7 +104,14 @@ internal class SearchClientResult
         this.AskResult.RelevantSources?.Add(citation);
         this.InsufficientTokensResult.RelevantSources?.Add(citation);
         this.UnsafeAnswerResult.RelevantSources?.Add(citation);
-        this.ErrorResult.RelevantSources?.Add(citation);
+    }
+
+    public void AddTokenUsageToStaticResults(TokenUsage tokenUsage)
+    {
+        // Add report only to non-streamed results
+        this.InsufficientTokensResult.TokenUsage = [tokenUsage];
+        this.UnsafeAnswerResult.TokenUsage = [tokenUsage];
+        this.NoFactsResult.TokenUsage = [tokenUsage];
     }
 
     /// <summary>

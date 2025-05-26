@@ -8,10 +8,10 @@ using Microsoft.KernelMemory.MemoryStorage.DevTools;
 using Microsoft.KernelMemory.Pipeline.Queue.DevTools;
 using Microsoft.KernelMemory.Safety.AzureAIContentSafety;
 using Microsoft.KM.TestHelpers;
-using Xunit.Abstractions;
 
 namespace Microsoft.KM.Core.UnitTests.Configuration;
 
+[Trait("Category", "UnitTest")]
 public class ConfigEnvVarsTest : BaseUnitTestCase
 {
     public ConfigEnvVarsTest(ITestOutputHelper output) : base(output)
