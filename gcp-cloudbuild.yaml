@@ -1,0 +1,66 @@
+# NOTE: The service account used to run these steps is configured in the Cloud Build Trigger configuration
+# - That account needs the roles/artifactregistry.writer role to push images to Google Artifact Registry
+# - It will also need permissions on Cloud Deploy to create releases
+steps:
+  # Step 1: Configure Docker to authenticate with Google Artifact Registry
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        gcloud auth configure-docker ${_REGION}-docker.pkg.dev
+
+  # Step 2: Build the Docker image
+  - name: "gcr.io/cloud-builders/docker"
+    env:
+      - "DOCKER_BUILDKIT=1"
+    args: [
+        "build",
+        # Cloud Build's Build ID environment variable
+        "--build-arg",
+        "BUILD_ID=$BUILD_ID",
+        # Cloud Build's Git Commit SHA environment variable
+        "--build-arg",
+        "COMMIT_SHA=$COMMIT_SHA",
+        # The tags for the Docker image
+        "-t",
+        "${_REGION}-docker.pkg.dev/$PROJECT_ID/study-apps-artifact-registry/kernelmemory-api:${SHORT_SHA}",
+        "-t",
+        "${_REGION}-docker.pkg.dev/$PROJECT_ID/study-apps-artifact-registry/kernelmemory-api:latest",
+        # The Dockerfile to use
+        "-f",
+        "Dockerfile",
+        # The directory containing the Dockerfile
+        ".",
+      ]
+
+  # Step 3: Push the Docker image to Google Artifact Registry
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "${_REGION}-docker.pkg.dev/$PROJECT_ID/study-apps-artifact-registry/kernelmemory-api:${SHORT_SHA}",
+      ]
+
+  # Step 4: Deploy the Docker image to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: "gcloud"
+    args:
+      - "deploy"
+      - "releases"
+      - "create"
+      - "release-${SHORT_SHA}"
+      - "--delivery-pipeline=kernelmemory-cicd-clouddeploy-pipeline"
+      - "--region=us-east4"
+      - "--images=kernelmemory-api=${_REGION}-docker.pkg.dev/$PROJECT_ID/study-apps-artifact-registry/kernelmemory-api:${SHORT_SHA}"
+      - "--source=." # The source directory containing skaffold.yaml
+      - "--annotations=gcb-build-id=$BUILD_ID,commit-sha=${SHORT_SHA}"
+
+images:
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/study-apps-artifact-registry/kernelmemory-api"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _REGION: "us-east4"
