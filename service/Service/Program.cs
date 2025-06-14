@@ -122,7 +122,9 @@ internal static class Program
                     x.MultipartBodyLengthLimit = maxSize.Value;
                     x.ValueLengthLimit = int.MaxValue;
                 });
-            });
+            },
+            
+            KernelMemoryBuilderBuildOptions.WithVolatileAndPersistentData);
 
         // CORS
         bool enableCORS = false;
