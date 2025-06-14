@@ -1,0 +1,89 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: kernelmemory-cloudrun-api
+  annotations:
+    run.googleapis.com/launch-stage: BETA
+    run.googleapis.com/ingress: all
+    run.googleapis.com/client-name: terraform
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/cloudsql-instances: study-stg-1338:us-east4:kernelmemory-study-stg-db
+        autoscaling.knative.dev/maxScale: "2"
+        autoscaling.knative.dev/minScale: "0"
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/startup-cpu-boost: "true"
+    spec:
+      serviceAccountName: km-study-stg-sa-cloudrun-api
+      containers:
+        - image: kernelmemory-api # This will be replaced by Cloud Deploy with the actual image
+          name: api
+          resources:
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+          startupProbe:
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+            periodSeconds: 3
+            failureThreshold: 1
+            tcpSocket:
+              port: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Staging # Varies by environment
+            - name: KernelMemory__Services__AzureBlobs__ConnectionString
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-azureblobs-connectionstring
+                  key: latest
+            - name: KernelMemory__Services__AzureOpenAIEmbedding__Endpoint
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-azureopenai-embedding-endpoint
+                  key: latest
+            - name: KernelMemory__Services__AzureOpenAIEmbedding__APIKey
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-azureopenai-embedding-apikey
+                  key: latest
+            - name: KernelMemory__Services__AzureOpenAIEmbedding__Deployment
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-azureopenai-embedding-deployment
+                  key: latest
+            - name: KernelMemory__Services__AzureOpenAIText__Endpoint
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-azureopenai-text-endpoint
+                  key: latest
+            - name: KernelMemory__Services__AzureOpenAIText__APIKey
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-azureopenai-text-apikey
+                  key: latest
+            - name: KernelMemory__Services__AzureOpenAIText__Deployment
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-azureopenai-text-deployment
+                  key: latest
+            - name: KernelMemory__Services__AzureQueues__ConnectionString
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-azurequeues-connectionstring
+                  key: latest
+            - name: KernelMemory__Services__Postgres__ConnectionString
+              valueFrom:
+                secretKeyRef:
+                  name: km-api-kernelmemorydb-postgres-connectionstring
+                  key: latest
+  traffic:
+    - percent: 100
+      latestRevision: true # This directs traffic to the latest revision
+    # Optionally, can split traffic between revisions like this:
+    # - percent: 80
+    #   latestRevision: true
+    # - percent: 20
+    #   revisionName: kernelmemory-cloudrun-api-v1  # Points to a specific revision

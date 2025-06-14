@@ -1,0 +1,25 @@
+apiVersion: skaffold/v4beta11
+kind: Config
+metadata:
+  name: cloud-run-deployment
+
+deploy:
+  cloudrun: {}
+
+profiles:
+  - name: staging
+    deploy:
+      cloudrun:
+        projectid: study-stg-1338
+        region: us-east4
+    manifests:
+      rawYaml:
+        - ./gcp-cloudrun-service-stg.yaml
+  - name: prod
+    deploy:
+      cloudrun:
+        projectid: study-prod-1338
+        region: us-east4
+    manifests:
+      rawYaml:
+        - ./gcp-cloudrun-service-prod.yaml
